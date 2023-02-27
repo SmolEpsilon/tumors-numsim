@@ -1,3 +1,4 @@
+%%
 % mainGenerateVideo
 % This script loads a segmented 3D-image of a brain, then places a
 % synthetic tumour and lets it grow according to the PDE-model
@@ -6,32 +7,36 @@
 %
 % This script solves the mathematical model with p=2, rho=const, a=b=c=1,
 % D(x)=d(x)*eye. Synthetic tumour is planted in.
+%%
 
-% Reset matlab variables and close all figures
-close all
-clear
+%Gunzip files
+files = gunzip('Dataset\per_subject_MRI_volumes\MTP_2023_0004','Unziped_Dataset\MTP_2023_0004');
+segvol1 = niftiread("T1_half_seg.nii");
+segvol2 = niftiread('T2_half_seg.nii');
+%%
+
 
 % Parameters used in the model
 % High-Grade Gliomas (HGG)
 rho = 0.012; % Proliferation rate
 dw  = 0.65;  % Diffusion coefficient, white matter
 dg  = 0.13;  % Diffusion coefficient, grey matter
-
+alpha = 1;
+beta = 1;
+gamma = 1;
 % PDE-solver parameters
 tStep  = 0.05;    % Discretization step for variable t
-noIter = 1000;    % Number of iterations in t-variable
+noIter = 500;    % Number of iterations in t-variable
 freqImgSave = 10; % Every 10th image is to be saved (adjust FrameRate for myVideo1 and myVideo2 below accordingly)
 
 % Load brain-data
-load('coreg_7940_mni152_2009bet.mat', 'segvol', 'grayMatterSegmentationValues', 'whiteMatterSegmentationValues');
+%load('coreg_7940_mni152_2009bet.mat', 'segvol', 'grayMatterSegmentationValues', 'whiteMatterSegmentationValues');
 % segvol contains a segmented 3D-scan of a brain (256x256x256 voxels)
 % ...MatterSegmentationValues contain a list of values in segvol that
 %                    correspond to grey and whitematter, respectively
 
 % Generate the D-function that appears in the PDE
-D =   dg * ismember(segvol, grayMatterSegmentationValues) ...
-    + dw * ismember(segvol, whiteMatterSegmentationValues);
-
+D =   dg * ismember(segvol1,2) + dw * ismember(segvol1,3);
 % Crop D so that it is not surrounded by unnecessary/dummy zero voxels
 idx1 = squeeze(any(any(D, 2), 3));
 idx2 = squeeze(any(any(D, 1), 3));
@@ -47,14 +52,14 @@ Om = +(D > 0);
 OmSize = size(Om);
 
 % Plant a seed of a tumour
-if false  % Change to true if the seed is to be placed randomly. If false place the tumour "in the middle"
+if true  % Change to true if the seed is to be placed randomly. If false place the tumour "in the middle"
     idxList = find(Om);
-    seedDiam   = 1 + 2*randi([5, 8]);
+    seedDiam   = 19;
     [seedPos(1), seedPos(2), seedPos(3)] = ind2sub(OmSize, idxList(randi([1, length(idxList)])));
 else    
     % Position and diameter of the seed
-    seedPos    = round(OmSize/2);
-    seedDiam   = 13;
+    seedPos    = [10,104,95];
+    seedDiam   = 19;
     % make sure that the seed is planted in Om
     seedTmp = find(D(seedPos(1), seedPos(2), :));
     seedTmp(seedTmp < seedPos(3)) = [];
@@ -72,7 +77,7 @@ phi = u;
 
 % Show a 3D-image of the brain and the planted seed
 fig1 = figure(1);
-fig1.Position = [10, 200, 1280, 720];
+%fig1.Position = [10, 200, 1280, 720];
 
 myVideo1 = VideoWriter('tumGrowth.mp4', 'MPEG-4');
 myVideo1.FrameRate = 10;
@@ -87,7 +92,7 @@ writeVideo(myVideo1, frame1);
 
 % Show a 3D-image of the tumour only
 fig2 = figure(2);
-fig2.Position = [10, 200, 1280, 720];
+%fig2.Position = [10, 200, 1280, 720];
 
 myVideo2 = VideoWriter('tumOnlyGrowth.mp4', 'MPEG-4');
 myVideo2.FrameRate = 10;
@@ -122,7 +127,8 @@ Davg.Neg3 = (circshift(D,  1, 3) + D)/2;
 % run the model, i.e., solve the PDE
 for currIter=1:noIter
   fprintf('Iteration %d\n', currIter);
-  u = u + tStep * (divDdu(u, Davg, OmEdges) + rho * u .* (1-u));
+  u = u + tStep * (divDdu(u, Davg, OmEdges) + rho * (u.^alpha)*beta .* ...
+      (1-u.^(1/beta)).^gamma);
   if mod(currIter, freqImgSave) == 0
     figure(fig1);
     tumorPatch = visTum3dUpdate(u, tumorPatch);
@@ -144,4 +150,22 @@ close(myVideo1);
 writeVideo(myVideo2, frame2);
 close(myVideo2);
 
-save('reactDiffModelSolution.mat', 'phi', 'u', 'seedPos', 'seedDiam', 'D', 'Om', 'tStep', 'noIter');
+save('reactDiffModelSolution.mat', 'phi', 'u', 'seedPos', 'seedDiam', ...
+    'D', 'Om', 'tStep', 'noIter');
+
+%%
+% Find the volume of tumor
+
+nonzero_indices = find(u>0.10); % find indices of non-zero elements
+[num_nonzero, ~] = size(nonzero_indices); % count non-zero elements
+
+% convert linear indices to subscripts
+[sub1, sub2, sub3] = ind2sub(size(u),nonzero_indices);
+
+% print the subscripts of non-zero elements
+disp("Subscripts of non-zero elements:");
+disp([sub1, sub2, sub3]);
+
+% print the number of non-zero elements
+disp("Number of non-zero elements:");
+disp(num_nonzero);
