@@ -8,11 +8,14 @@
 % This script solves the mathematical model with p=2, rho=const, a=b=c=1,
 % D(x)=d(x)*eye. Synthetic tumour is planted in.
 %%
-
+clear 
 %Gunzip files
 files = gunzip('Dataset\per_subject_MRI_volumes\MTP_2023_0004','Unziped_Dataset\MTP_2023_0004');
+files_seg = gunzip('BraTS_version\BraTS2021_01516_seg.nii.gz','BraTS_version\');
 segvol1 = niftiread("T1_half_seg.nii");
+vol1 = niftiread('Dataset_unzip\MTP_2023_0004\T1.nii');
 segvol2 = niftiread('T2_half_seg.nii');
+seg_tumor = niftiread('BraTS_version\BraTS2021_01516_seg.nii');
 %%
 
 
@@ -26,7 +29,7 @@ beta = 1;
 gamma = 1;
 % PDE-solver parameters
 tStep  = 0.05;    % Discretization step for variable t
-noIter = 500;    % Number of iterations in t-variable
+noIter = 50;    % Number of iterations in t-variable
 freqImgSave = 10; % Every 10th image is to be saved (adjust FrameRate for myVideo1 and myVideo2 below accordingly)
 
 % Load brain-data
@@ -52,14 +55,14 @@ Om = +(D > 0);
 OmSize = size(Om);
 
 % Plant a seed of a tumour
-if true  % Change to true if the seed is to be placed randomly. If false place the tumour "in the middle"
+if false  % Change to true if the seed is to be placed randomly. If false place the tumour "in the middle"
     idxList = find(Om);
     seedDiam   = 19;
     [seedPos(1), seedPos(2), seedPos(3)] = ind2sub(OmSize, idxList(randi([1, length(idxList)])));
 else    
     % Position and diameter of the seed
-    seedPos    = [10,104,95];
-    seedDiam   = 19;
+    seedPos    = [60,100,100];
+    seedDiam   = 4;
     % make sure that the seed is planted in Om
     seedTmp = find(D(seedPos(1), seedPos(2), :));
     seedTmp(seedTmp < seedPos(3)) = [];
@@ -129,18 +132,18 @@ for currIter=1:noIter
   fprintf('Iteration %d\n', currIter);
   u = u + tStep * (divDdu(u, Davg, OmEdges) + rho * (u.^alpha)*beta .* ...
       (1-u.^(1/beta)).^gamma);
-  if mod(currIter, freqImgSave) == 0
+   if mod(currIter, freqImgSave) == 0
     figure(fig1);
-    tumorPatch = visTum3dUpdate(u, tumorPatch);
-    drawnow;
-    frame1 = getframe(fig1);
-    writeVideo(myVideo1, frame1);
+      tumorPatch = visTum3dUpdate(u, tumorPatch);
+      drawnow;
+      frame1 = getframe(fig1);
+      writeVideo(myVideo1, frame1);
 
-    figure(fig2);
-    tumorOnlyPatch = visTum3dUpdate(u, tumorOnlyPatch);
-    drawnow;
-    frame2 = getframe(fig2);
-    writeVideo(myVideo2, frame2);
+     figure(fig2);
+      tumorOnlyPatch = visTum3dUpdate(u, tumorOnlyPatch);
+      drawnow;
+      frame2 = getframe(fig2);
+      writeVideo(myVideo2, frame2);
   end
 end
 
@@ -154,18 +157,41 @@ save('reactDiffModelSolution.mat', 'phi', 'u', 'seedPos', 'seedDiam', ...
     'D', 'Om', 'tStep', 'noIter');
 
 %%
-% Find the volume of tumor
+%Add tumor in Omega
+Om_wt = ceil(Om + u);
 
-nonzero_indices = find(u>0.10); % find indices of non-zero elements
+
+%%
+% Find the volume of synthetic tumor
+% 1 voxel = 1mm^3
+nonzero_indices = find(u>0.05); % find indices of non-zero elements
 [num_nonzero, ~] = size(nonzero_indices); % count non-zero elements
 
 % convert linear indices to subscripts
 [sub1, sub2, sub3] = ind2sub(size(u),nonzero_indices);
 
 % print the subscripts of non-zero elements
-disp("Subscripts of non-zero elements:");
+disp("Subscripts of non-zero elements in synthetic tumor:");
 disp([sub1, sub2, sub3]);
 
 % print the number of non-zero elements
-disp("Number of non-zero elements:");
+disp("Number of non-zero elements in synthetic tumor:");
 disp(num_nonzero);
+
+%%
+% Find the volume of tumor
+% 1 voxel = 1mm^3
+nonzero_indices2 = find(seg_tumor); % find indices of non-zero elements
+[num_nonzero2, ~] = size(nonzero_indices2); % count non-zero elements
+
+% convert linear indices to subscripts
+[sub12, sub22, sub32] = ind2sub(size(seg_tumor),nonzero_indices2);
+
+% print the subscripts of non-zero elements
+disp("Subscripts of non-zero elements in synthetic tumor:");
+disp([sub12, sub22, sub32]);
+
+% print the number of non-zero elements
+disp("Number of non-zero elements in synthetic tumor:");
+disp(num_nonzero)
+disp(num_nonzero2);
