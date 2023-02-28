@@ -8,7 +8,8 @@
 % This script solves the mathematical model with p=2, rho=const, a=b=c=1,
 % D(x)=d(x)*eye. Synthetic tumour is planted in.
 %%
-clear 
+clear all
+close all
 %Gunzip files
 files = gunzip('Dataset\per_subject_MRI_volumes\MTP_2023_0004','Unziped_Dataset\MTP_2023_0004');
 files_seg = gunzip('BraTS_version\BraTS2021_01516_seg.nii.gz','BraTS_version\');
@@ -29,7 +30,7 @@ beta = 1;
 gamma = 1;
 % PDE-solver parameters
 tStep  = 0.05;    % Discretization step for variable t
-noIter = 50;    % Number of iterations in t-variable
+noIter = 1030;    % Number of iterations in t-variable
 freqImgSave = 10; % Every 10th image is to be saved (adjust FrameRate for myVideo1 and myVideo2 below accordingly)
 
 % Load brain-data
@@ -61,8 +62,8 @@ if false  % Change to true if the seed is to be placed randomly. If false place 
     [seedPos(1), seedPos(2), seedPos(3)] = ind2sub(OmSize, idxList(randi([1, length(idxList)])));
 else    
     % Position and diameter of the seed
-    seedPos    = [60,100,100];
-    seedDiam   = 4;
+    seedPos    = [35,80,105];
+    seedDiam   = 10;
     % make sure that the seed is planted in Om
     seedTmp = find(D(seedPos(1), seedPos(2), :));
     seedTmp(seedTmp < seedPos(3)) = [];
@@ -164,7 +165,7 @@ Om_wt = ceil(Om + u);
 %%
 % Find the volume of synthetic tumor
 % 1 voxel = 1mm^3
-nonzero_indices = find(u>0.05); % find indices of non-zero elements
+nonzero_indices = find(u); % find indices of non-zero elements
 [num_nonzero, ~] = size(nonzero_indices); % count non-zero elements
 
 % convert linear indices to subscripts
@@ -174,9 +175,6 @@ nonzero_indices = find(u>0.05); % find indices of non-zero elements
 disp("Subscripts of non-zero elements in synthetic tumor:");
 disp([sub1, sub2, sub3]);
 
-% print the number of non-zero elements
-disp("Number of non-zero elements in synthetic tumor:");
-disp(num_nonzero);
 
 %%
 % Find the volume of tumor
@@ -194,4 +192,5 @@ disp([sub12, sub22, sub32]);
 % print the number of non-zero elements
 disp("Number of non-zero elements in synthetic tumor:");
 disp(num_nonzero)
+disp("Number of non-zero elements in real tumor")
 disp(num_nonzero2);
