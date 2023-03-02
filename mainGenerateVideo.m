@@ -127,15 +127,27 @@ Davg.Neg2 = (circshift(D,  1, 2) + D)/2;
 Davg.Pos3 = (circshift(D, -1, 3) + D)/2;
 Davg.Neg3 = (circshift(D,  1, 3) + D)/2;
 
+
+fig3 = figure(3);
+cmin = 0.0; % Minimum value
+cmax = 1.0; % Maximum value
 % run the model, i.e., solve the PDE
 for currIter=1:noIter
   fprintf('Iteration %d\n', currIter);
   u = u + tStep * (divDdu(u, Davg, OmEdges,2) + rho * (u.^alpha)*beta .* ...
       (1-u.^(1/beta)).^gamma);
-%   fprintf('Sum u: %f\n', sum(u(:) .* (u(:)>0.16) ));
-    fprintf('Sum u08: %f\n', sum(u(:)>0.08));
-    fprintf('Sum u16: %f\n', sum(u(:)>0.16));
-    fprintf('Sum u24: %f\n', sum(u(:)>0.24));
+%  fprintf('Sum u: %f\n', sum(u(:) .* (u(:)>0.16) ));
+%  fprintf('Sum u08: %f\n', sum(u(:)>0.08));
+%  fprintf('Sum u16: %f\n', sum(u(:)>0.16));
+%  fprintf('Sum u24: %f\n', sum(u(:)>0.24));
+figure(fig3);
+  imagesc(u(:,:,75),[cmin, cmax]);
+  caxis([cmin, cmax])
+  colormap jet; 
+  colorbar; 
+  axis equal; 
+  title(sprintf('Iteration %d\n',currIter)); % Add a title with the current time step
+  drawnow; 
    if mod(currIter, freqImgSave) == 0
     figure(fig1);
       tumorPatch = visTum3dUpdate(u, tumorPatch);
