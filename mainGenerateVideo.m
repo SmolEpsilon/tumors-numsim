@@ -8,30 +8,29 @@
 % This script solves the mathematical model with p=2, rho=const, a=b=c=1,
 % D(x)=d(x)*eye. Synthetic tumour is planted in.
 %%
-clear all
-close all
+
 %Gunzip files
-files = gunzip('Dataset\per_subject_MRI_volumes\MTP_2023_0004','Unziped_Dataset\MTP_2023_0004');
-files_seg = gunzip('BraTS_version\BraTS2021_01516_seg.nii.gz','BraTS_version\');
+%files = gunzip('Dataset\per_subject_MRI_volumes\MTP_2023_0004','Unziped_Dataset\MTP_2023_0004');
+%files_seg = gunzip('BraTS_version\BraTS2021_01516_seg.nii.gz','BraTS_version\');
 segvol1 = niftiread("T1_half_seg.nii");
-vol1 = niftiread('Dataset_unzip\MTP_2023_0004\T1.nii');
+vol1 = niftiread('Unziped_Dataset\MTP_2023_0004\T1.nii');
 segvol2 = niftiread('T2_half_seg.nii');
-seg_tumor = niftiread('BraTS_version\BraTS2021_01516_seg.nii');
+seg_tumor = niftiread('BraTS2021_01516_seg.nii');
 %%
 
 
 % Parameters used in the model
 % High-Grade Gliomas (HGG)
-rho = 0.012; % Proliferation rate
+rho = 0.029; % Proliferation rate
 dw  = 0.65;  % Diffusion coefficient, white matter
 dg  = 0.13;  % Diffusion coefficient, grey matter
 alpha = 1;
 beta = 1;
 gamma = 1;
 % PDE-solver parameters
-tStep  = 0.05;    % Discretization step for variable t
-noIter = 1030;    % Number of iterations in t-variable
-freqImgSave = 10; % Every 10th image is to be saved (adjust FrameRate for myVideo1 and myVideo2 below accordingly)
+tStep  = 0.05;    % Discretization step for variable t (days)
+noIter = 100;    % Number of iterations in t-variable
+freqImgSave = 1; % Every 10th image is to be saved (adjust FrameRate for myVideo1 and myVideo2 below accordingly)
 
 % Load brain-data
 %load('coreg_7940_mni152_2009bet.mat', 'segvol', 'grayMatterSegmentationValues', 'whiteMatterSegmentationValues');
@@ -62,7 +61,7 @@ if false  % Change to true if the seed is to be placed randomly. If false place 
     [seedPos(1), seedPos(2), seedPos(3)] = ind2sub(OmSize, idxList(randi([1, length(idxList)])));
 else    
     % Position and diameter of the seed
-    seedPos    = [35,80,105];
+    seedPos    = [45,80,105];
     seedDiam   = 10;
     % make sure that the seed is planted in Om
     seedTmp = find(D(seedPos(1), seedPos(2), :));
@@ -79,7 +78,7 @@ u(u<1e-3) = 0;
 u = u .* Om;
 phi = u;
 
-% Show a 3D-image of the brain and the planted seed
+%Show a 3D-image of the brain and the planted seed
 fig1 = figure(1);
 %fig1.Position = [10, 200, 1280, 720];
 
@@ -94,7 +93,7 @@ drawnow;
 frame1 = getframe(fig1);
 writeVideo(myVideo1, frame1);
 
-% Show a 3D-image of the tumour only
+%Show a 3D-image of the tumour only
 fig2 = figure(2);
 %fig2.Position = [10, 200, 1280, 720];
 
@@ -131,8 +130,12 @@ Davg.Neg3 = (circshift(D,  1, 3) + D)/2;
 % run the model, i.e., solve the PDE
 for currIter=1:noIter
   fprintf('Iteration %d\n', currIter);
-  u = u + tStep * (divDdu(u, Davg, OmEdges) + rho * (u.^alpha)*beta .* ...
+  u = u + tStep * (divDdu(u, Davg, OmEdges,2) + rho * (u.^alpha)*beta .* ...
       (1-u.^(1/beta)).^gamma);
+%   fprintf('Sum u: %f\n', sum(u(:) .* (u(:)>0.16) ));
+    fprintf('Sum u08: %f\n', sum(u(:)>0.08));
+    fprintf('Sum u16: %f\n', sum(u(:)>0.16));
+    fprintf('Sum u24: %f\n', sum(u(:)>0.24));
    if mod(currIter, freqImgSave) == 0
     figure(fig1);
       tumorPatch = visTum3dUpdate(u, tumorPatch);
@@ -159,13 +162,14 @@ save('reactDiffModelSolution.mat', 'phi', 'u', 'seedPos', 'seedDiam', ...
 
 %%
 %Add tumor in Omega
-Om_wt = ceil(Om + u);
+u_th = +(u>0.02);
+Om_wt = ceil(Om + u_th);
 
 
 %%
 % Find the volume of synthetic tumor
 % 1 voxel = 1mm^3
-nonzero_indices = find(u); % find indices of non-zero elements
+nonzero_indices = find(u>0.16); % find indices of non-zero elements
 [num_nonzero, ~] = size(nonzero_indices); % count non-zero elements
 
 % convert linear indices to subscripts
@@ -177,7 +181,7 @@ disp([sub1, sub2, sub3]);
 
 
 %%
-% Find the volume of tumor
+%Find the volume of tumor
 % 1 voxel = 1mm^3
 nonzero_indices2 = find(seg_tumor); % find indices of non-zero elements
 [num_nonzero2, ~] = size(nonzero_indices2); % count non-zero elements
@@ -189,8 +193,10 @@ nonzero_indices2 = find(seg_tumor); % find indices of non-zero elements
 disp("Subscripts of non-zero elements in synthetic tumor:");
 disp([sub12, sub22, sub32]);
 
-% print the number of non-zero elements
+%print the number of non-zero elements
 disp("Number of non-zero elements in synthetic tumor:");
 disp(num_nonzero)
+disp("Sum of non-zero elements in synthetic tumor:");
+disp(sum(u(:)))
 disp("Number of non-zero elements in real tumor")
 disp(num_nonzero2);
