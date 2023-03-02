@@ -2,7 +2,7 @@ function pT = visTumOnly3d(volT)
 % Plots a 3D-image of a tumour (volT)
 
 % Threshold of cell density to be considered a part of a tumour
-lvlT = 0.02;
+lvlT = 0.16;
 
 [Z,X,Y] = meshgrid(1:size(volT,2), 1:size(volT,1), 1:size(volT,3));
 
