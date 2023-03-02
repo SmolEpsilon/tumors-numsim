@@ -2,7 +2,7 @@ function pTnew = visTum3dUpdate(volT, pTold)
 % Updates a 3D-image of brain matter, by removing previous tumour and
 % plotting the a new Tumor volume instead
 
-lvlT = 0.02;
+lvlT = 0.16;
 
 if exist('pTold', 'var')
     delete(pTold);
