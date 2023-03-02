@@ -1,4 +1,9 @@
-function diffOp = divDdu(u, Davg, OmegaEdges)
+function diffOp = divDdu(u, Davg, OmegaEdges,p)
+
+if ~exist('p', 'var')
+    p=2;
+end
+
 udifPos = [1;-1;0];
 udifNeg = [0;1;-1];
 
@@ -20,7 +25,14 @@ u2Neg = convn(u, reshape(udifNeg, 1, 3, 1), 'same') .* OmegaEdges.Neg2;
 u3Pos = convn(u, reshape(udifPos, 1, 1, 3), 'same') .* OmegaEdges.Pos3;
 u3Neg = convn(u, reshape(udifNeg, 1, 1, 3), 'same') .* OmegaEdges.Neg3;
 
-diffOp = Davg.Pos1 .* u1Pos - Davg.Neg1 .* u1Neg + ...
-         Davg.Pos2 .* u2Pos - Davg.Neg2 .* u2Neg + ...
-         Davg.Pos3 .* u3Pos - Davg.Neg3 .* u3Neg;
+duPosNorm = u1Pos.^2 + u2Pos.^2 + u3Pos.^2;
+duNegNorm = u1Neg.^2 + u2Neg.^2 + u3Neg.^2;
+
+duPosNorm(duPosNorm==0)=1;
+duNegNorm(duNegNorm==0)=1;
+
+
+diffOp = Davg.Pos1 .* u1Pos.*duPosNorm.^(p/2-1) - Davg.Neg1 .* u1Neg.*duNegNorm.^(p/2-1)  + ...
+         Davg.Pos2 .* u2Pos.*duPosNorm.^(p/2-1)  - Davg.Neg2 .* u2Neg.*duNegNorm.^(p/2-1)  + ...
+         Davg.Pos3 .* u3Pos.*duPosNorm.^(p/2-1)  - Davg.Neg3 .* u3Neg.*duNegNorm.^(p/2-1) ;
 end
