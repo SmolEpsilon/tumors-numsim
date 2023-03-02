@@ -6,7 +6,7 @@ function pT = visTum3d(volD, volT, cutCoord)
 clf; 
 
 lvlGW = 0.1;
-lvlT = 0.02;
+lvlT = 0.16;
 
 [Z,X,Y] = meshgrid(1:size(volD,2), 1:size(volD,1), 1:size(volD,3));
 Xt = X; Xt(volD<lvlGW) = NaN;
